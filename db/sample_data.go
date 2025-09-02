@@ -1,16 +1,10 @@
 package db
 
-import (
-	"log"
-
-	"github.com/KatrinSalt/backend-challenge-go/db/models"
-)
-
 // SampleData contains all the sample data for seeding the database.
 type SampleData struct {
-	Companies     []*models.Company
-	Approvers     []*models.Approver
-	WorkflowRules []*models.WorkflowRule
+	Companies     []Company
+	Approvers     []Approver
+	WorkflowRules []WorkflowRule
 }
 
 // NewSampleData creates and returns sample data based on Figure 1 from the README.md.
@@ -29,8 +23,8 @@ const (
 )
 
 // getSampleCompanies returns sample company data.
-func getSampleCompanies() []*models.Company {
-	return []*models.Company{
+func getSampleCompanies() []Company {
+	return []Company{
 		{
 			Name: "Light",
 		},
@@ -45,8 +39,8 @@ const (
 )
 
 // getSampleApprovers returns sample approver data.
-func getSampleApprovers() []*models.Approver {
-	return []*models.Approver{
+func getSampleApprovers() []Approver {
+	return []Approver{
 		// finance team member.
 		{
 			ID:        approverID1,
@@ -99,7 +93,7 @@ func (ac ApprovalChannel) String() string {
 }
 
 // getSampleWorkflowRules returns sample workflow rules based on Figure 1
-func getSampleWorkflowRules() []*models.WorkflowRule {
+func getSampleWorkflowRules() []WorkflowRule {
 	// Default values for workflow rules.
 	// Rule 1: Send an approval request to any finance team member via Slack when invoice < $5k.
 	rule1MaxAmount := 5000.0
@@ -134,7 +128,7 @@ func getSampleWorkflowRules() []*models.WorkflowRule {
 	rule5Department := marketingDepartment
 	rule5ApprovalChannel := int(email)
 
-	return []*models.WorkflowRule{
+	return []WorkflowRule{
 		// Rule 1: Send an approval request to any finance team member via Slack when invoice < $5k.
 		{
 			CompanyID:                 companyID,
@@ -192,68 +186,68 @@ func getSampleWorkflowRules() []*models.WorkflowRule {
 	}
 }
 
-// SeedData populates the database with the provided workflow example (Fig.1).
-func (client *client) SeedSampleData() error {
-	log.Println("Seeding database with sample data...")
+// // SeedSampleData populates the database with the provided workflow example (Fig.1).
+// func SeedSampleData(client sql.Client) error {
+// 	log.Println("Seeding database with sample data...")
 
-	// Get sample data.
-	sampleData := NewSampleData()
+// 	// Get sample data.
+// 	sampleData := NewSampleData()
 
-	// Start a transaction.
-	tx, err := client.Begin()
-	if err != nil {
-		return err
-	}
+// 	// Start a transaction.
+// 	tx, err := client.Begin()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// Rollback the transaction if an error occurs.
-	defer tx.Rollback()
+// 	// Rollback the transaction if an error occurs.
+// 	defer tx.Rollback()
 
-	// Insert companies data.
-	stmt, err := tx.Prepare("INSERT OR IGNORE INTO companies (name) VALUES (?)")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
+// 	// Insert companies data.
+// 	stmt, err := tx.Prepare("INSERT OR IGNORE INTO companies (name) VALUES (?)")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer stmt.Close()
 
-	for _, company := range sampleData.Companies {
-		if _, err := stmt.Exec(company.Name); err != nil {
-			return err
-		}
-	}
+// 	for _, company := range sampleData.Companies {
+// 		if _, err := stmt.Exec(company.Name); err != nil {
+// 			return err
+// 		}
+// 	}
 
-	// Insert approvers data.
-	approverStmt, err := tx.Prepare("INSERT OR IGNORE INTO approvers (id, company_id, email, slack_id) VALUES (?, ?, ?, ?)")
-	if err != nil {
-		return err
-	}
-	defer approverStmt.Close()
+// 	// Insert approvers data.
+// 	approverStmt, err := tx.Prepare("INSERT OR IGNORE INTO approvers (id, company_id, email, slack_id) VALUES (?, ?, ?, ?)")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer approverStmt.Close()
 
-	for _, approver := range sampleData.Approvers {
-		if _, err := approverStmt.Exec(approver.ID, approver.CompanyID, approver.Email, approver.SlackID); err != nil {
-			return err
-		}
-	}
+// 	for _, approver := range sampleData.Approvers {
+// 		if _, err := approverStmt.Exec(approver.ID, approver.CompanyID, approver.Email, approver.SlackID); err != nil {
+// 			return err
+// 		}
+// 	}
 
-	// Insert workflow rules data.
-	ruleStmt, err := tx.Prepare("INSERT OR IGNORE INTO workflow_rules (id, company_id, min_amount, max_amount, department, is_manager_approval_required, approver_id, approval_channel) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-	if err != nil {
-		return err
-	}
-	defer ruleStmt.Close()
+// 	// Insert workflow rules data.
+// 	ruleStmt, err := tx.Prepare("INSERT OR IGNORE INTO workflow_rules (id, company_id, min_amount, max_amount, department, is_manager_approval_required, approver_id, approval_channel) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer ruleStmt.Close()
 
-	for _, rule := range sampleData.WorkflowRules {
-		if _, err := ruleStmt.Exec(rule.ID, rule.CompanyID, rule.MinAmount, rule.MaxAmount, rule.Department, rule.IsManagerApprovalRequired, rule.ApproverID, rule.ApprovalChannel); err != nil {
-			return err
-		}
-	}
+// 	for _, rule := range sampleData.WorkflowRules {
+// 		if _, err := ruleStmt.Exec(rule.ID, rule.CompanyID, rule.MinAmount, rule.MaxAmount, rule.Department, rule.IsManagerApprovalRequired, rule.ApproverID, rule.ApprovalChannel); err != nil {
+// 			return err
+// 		}
+// 	}
 
-	// Commit the transaction
-	if err := tx.Commit(); err != nil {
-		return err
-	}
+// 	// Commit the transaction
+// 	if err := tx.Commit(); err != nil {
+// 		return err
+// 	}
 
-	// TODO: check logging strategy later on.
-	log.Println("Database seeded successfully")
+// 	// TODO: check logging strategy later on.
+// 	log.Println("Database seeded successfully")
 
-	return nil
-}
+// 	return nil
+// }
