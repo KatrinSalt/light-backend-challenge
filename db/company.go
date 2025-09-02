@@ -1,7 +1,7 @@
 package db
 
-// Company represents a company that has a workflow.
+// Company represents a company in the system.
 type Company struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID   int    `db:"id"`
+	Name string `db:"name"`
 }

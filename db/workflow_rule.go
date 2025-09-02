@@ -1,13 +1,13 @@
 package db
 
-// WorkflowRule represents a rule that determines who should approve an invoice.
+// WorkflowRule represents a rule that determines how invoices are approved.
 type WorkflowRule struct {
-	ID                        int      `json:"id"`
-	CompanyID                 int      `json:"company_id"`
-	MinAmount                 *float64 `json:"min_amount"`
-	MaxAmount                 *float64 `json:"max_amount"`
-	Department                *string  `json:"department"`
-	IsManagerApprovalRequired *int     `json:"is_manager_approval_required"` // 0 = false, 1 = true
-	ApproverID                int      `json:"approver_id"`
-	ApprovalChannel           int      `json:"approval_channel"` // 0 = Slack, 1 = Email
+	ID                        int      `db:"id"`
+	CompanyID                 int      `db:"company_id"`
+	MinAmount                 *float64 `db:"min_amount"`
+	MaxAmount                 *float64 `db:"max_amount"`
+	Department                *string  `db:"department"`
+	IsManagerApprovalRequired *int     `db:"is_manager_approval_required"`
+	ApproverID                int      `db:"approver_id"`
+	ApprovalChannel           int      `db:"approval_channel"`
 }
