@@ -16,6 +16,8 @@ var (
 // WorkflowRuleStore defines the interface for workflow rule operations
 type WorkflowRuleStore interface {
 	Create(workflowRule WorkflowRule) (WorkflowRule, error)
+	GetByCompanyID(companyID int) ([]WorkflowRule, error)
+	FindMatchingRule(companyID int, amount float64, department string, requiresManager bool) (WorkflowRule, error)
 }
 
 // workflowRuleStore implements WorkflowRuleStore
@@ -80,4 +82,83 @@ func (s *workflowRuleStore) Create(workflowRule WorkflowRule) (WorkflowRule, err
 	}
 
 	return outWorkflowRule, nil
+}
+
+// GetByCompanyID retrieves all workflow rules for a specific company.
+func (s *workflowRuleStore) GetByCompanyID(companyID int) ([]WorkflowRule, error) {
+	query := fmt.Sprintf("SELECT id, company_id, min_amount, max_amount, department, is_manager_approval_required, approver_id, approval_channel FROM %s WHERE company_id = $1", s.table)
+
+	rows, err := s.client.Query(query, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query workflow rules: %w", err)
+	}
+	defer rows.Close()
+
+	var rules []WorkflowRule
+	for rows.Next() {
+		var rule WorkflowRule
+		err := rows.Scan(
+			&rule.ID,
+			&rule.CompanyID,
+			&rule.MinAmount,
+			&rule.MaxAmount,
+			&rule.Department,
+			&rule.IsManagerApprovalRequired,
+			&rule.ApproverID,
+			&rule.ApprovalChannel,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan workflow rule: %w", err)
+		}
+		rules = append(rules, rule)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating workflow rules: %w", err)
+	}
+
+	return rules, nil
+}
+
+func (s *workflowRuleStore) FindMatchingRule(companyID int, amount float64, department string, requiresManager bool) (WorkflowRule, error) {
+	query := `
+		SELECT id, company_id, min_amount, max_amount, department, 
+		       is_manager_approval_required, approver_id, approval_channel 
+		FROM workflow_rules 
+		WHERE company_id = $1 
+			AND (
+				-- Amount logic: inclusive lower bound, exclusive upper bound
+				(min_amount IS NULL OR $2 >= min_amount) AND
+				(max_amount IS NULL OR $2 < max_amount)
+			)
+			AND (department IS NULL OR department = $3)
+			AND (is_manager_approval_required IS NULL OR is_manager_approval_required = $4)
+		ORDER BY 
+			(CASE WHEN min_amount IS NOT NULL THEN 1 ELSE 0 END +
+			 CASE WHEN max_amount IS NOT NULL THEN 1 ELSE 0 END +
+			 CASE WHEN department IS NOT NULL THEN 1 ELSE 0 END +
+			 CASE WHEN is_manager_approval_required IS NOT NULL THEN 1 ELSE 0 END) DESC,
+			id
+		LIMIT 1`
+
+	var rule WorkflowRule
+
+	// Convert bool to int: false -> 0, true -> 1
+	managerApprovalInt := 0
+	if requiresManager {
+		managerApprovalInt = 1
+	}
+
+	err := s.client.QueryRow(query, companyID, amount, department, managerApprovalInt).Scan(
+		&rule.ID, &rule.CompanyID, &rule.MinAmount, &rule.MaxAmount,
+		&rule.Department, &rule.IsManagerApprovalRequired, &rule.ApproverID, &rule.ApprovalChannel)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return WorkflowRule{}, ErrWorkflowRuleNotFound
+		}
+		return WorkflowRule{}, err
+	}
+
+	return rule, nil
 }

@@ -45,6 +45,8 @@ func getSampleApprovers() []Approver {
 		{
 			ID:        approverID1,
 			CompanyID: companyID,
+			Name:      "System User",
+			Role:      "Finance Team Member",
 			Email:     "finance_team@light.com",
 			SlackID:   "U123456",
 		},
@@ -52,6 +54,8 @@ func getSampleApprovers() []Approver {
 		{
 			ID:        approverID2,
 			CompanyID: companyID,
+			Name:      "Vera Sander",
+			Role:      "Finance Department Manager",
 			Email:     "vera_sander@light.com",
 			SlackID:   "U789012",
 		},
@@ -59,6 +63,8 @@ func getSampleApprovers() []Approver {
 		{
 			ID:        approverID3,
 			CompanyID: companyID,
+			Name:      "Amanda Svensson",
+			Role:      "CFO",
 			Email:     "amanda_svensson@light.com",
 			SlackID:   "U345678",
 		},
@@ -66,6 +72,8 @@ func getSampleApprovers() []Approver {
 		{
 			ID:        approverID4,
 			CompanyID: companyID,
+			Name:      "Sarah Johnson",
+			Role:      "CMO",
 			Email:     "sarah_johnson@light.com",
 			SlackID:   "U456789",
 		},
