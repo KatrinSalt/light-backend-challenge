@@ -2,22 +2,35 @@ package db
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/KatrinSalt/backend-challenge-go/db/sql"
+	"github.com/KatrinSalt/backend-challenge-go/db/sqlite"
 )
 
-// dbService provides a centralized interface for all database operations.
-type dbService struct {
+// Service interface for the database service.
+type Service interface {
+	GetSampleData() *SampleData
+	Initialize() error
+	SeedSampleData() error
+	GetCompanyByName(name string) (Company, error)
+	GetApproverByID(id int) (Approver, error)
+	FindMatchingRule(companyID int, amount float64, department string, requiresManager bool) (WorkflowRule, error)
+}
+
+// Service provides a centralized interface for all database operations.
+type service struct {
 	client            sql.Client
+	schema            []string
 	sampleData        *SampleData
-	CompanyStore      CompanyStore
-	ApproverStore     ApproverStore
-	WorkflowRuleStore WorkflowRuleStore
+	companyStore      CompanyStore
+	approverStore     ApproverStore
+	workflowRuleStore WorkflowRuleStore
 }
 
 // ServiceOptions contains configuration options for the database service.
 type ServiceOptions struct {
+	Schema            []string
+	SampleData        *SampleData
 	CompanyTable      string
 	ApproverTable     string
 	WorkflowRuleTable string
@@ -47,8 +60,22 @@ func WithWorkflowRuleTable(table string) ServiceOption {
 	}
 }
 
-// NewDBService creates a new database service with all stores.
-func NewDBService(client sql.Client, options ...ServiceOption) (*dbService, error) {
+// WithSampleData sets the sample data.
+func WithSampleData(sampleData *SampleData) ServiceOption {
+	return func(o *ServiceOptions) {
+		o.SampleData = sampleData
+	}
+}
+
+// WithSchema sets the schema.
+func WithSchema(schema []string) ServiceOption {
+	return func(o *ServiceOptions) {
+		o.Schema = schema
+	}
+}
+
+// NewService creates a new database service with all stores.
+func NewService(client sql.Client, options ...ServiceOption) (*service, error) {
 	if client == nil {
 		return nil, fmt.Errorf("nil sql client")
 	}
@@ -61,6 +88,14 @@ func NewDBService(client sql.Client, options ...ServiceOption) (*dbService, erro
 
 	for _, option := range options {
 		option(opts)
+	}
+
+	if len(opts.Schema) == 0 {
+		opts.Schema = sqlite.NewDBSchema()
+	}
+
+	if opts.SampleData == nil {
+		opts.SampleData = NewSampleData()
 	}
 
 	// Create company store.
@@ -87,41 +122,34 @@ func NewDBService(client sql.Client, options ...ServiceOption) (*dbService, erro
 		return nil, fmt.Errorf("failed to create workflow rule store: %w", err)
 	}
 
-	return &dbService{
+	return &service{
 		client:            client,
-		CompanyStore:      companyStore,
-		ApproverStore:     approverStore,
-		WorkflowRuleStore: workflowRuleStore,
-		sampleData:        NewSampleData(),
+		schema:            opts.Schema,
+		sampleData:        opts.SampleData,
+		companyStore:      companyStore,
+		approverStore:     approverStore,
+		workflowRuleStore: workflowRuleStore,
 	}, nil
 }
 
 // GetSampleData returns the sample data for the service.
-func (s *dbService) GetSampleData() *SampleData {
+func (s *service) GetSampleData() *SampleData {
 	return s.sampleData
 }
 
 // Initialize executes a list of SQL queries to initialize the database schema.
-func (s *dbService) Initialize(queries []string) error {
-	// TODO: check logging strategy later on.
-	log.Println("Initializing database schema...")
-
-	for i, query := range queries {
+func (s *service) Initialize() error {
+	for i, query := range s.schema {
 		if _, err := s.client.Exec(query); err != nil {
 			return fmt.Errorf("failed to execute query %d: %w", i+1, err)
 		}
 	}
 
-	// TODO: check logging strategy later on.
-	log.Println("Database schema initialized successfully")
-
 	return nil
 }
 
 // SeedSampleData populates the initialized database with sample data.
-func (s *dbService) SeedSampleData() error {
-	log.Println("Seeding database with sample data...")
-
+func (s *service) SeedSampleData() error {
 	// Check the sample data is available.
 	if s.sampleData == nil {
 		return fmt.Errorf("no sample data provided")
@@ -129,7 +157,7 @@ func (s *dbService) SeedSampleData() error {
 
 	// Add companies.
 	for _, company := range s.sampleData.Companies {
-		_, err := s.CompanyStore.Create(company)
+		_, err := s.companyStore.Create(company)
 		if err != nil {
 			return err
 		}
@@ -137,7 +165,7 @@ func (s *dbService) SeedSampleData() error {
 
 	// Add approvers.
 	for _, approver := range s.sampleData.Approvers {
-		_, err := s.ApproverStore.Create(approver)
+		_, err := s.approverStore.Create(approver)
 		if err != nil {
 			return err
 		}
@@ -145,12 +173,26 @@ func (s *dbService) SeedSampleData() error {
 
 	// Add workflow rules.
 	for _, rule := range s.sampleData.WorkflowRules {
-		_, err := s.WorkflowRuleStore.Create(rule)
+		_, err := s.workflowRuleStore.Create(rule)
 		if err != nil {
 			return err
 		}
 	}
 
-	log.Println("Database seeded successfully")
 	return nil
+}
+
+// GetCompanyByName retrieves a company by its name.
+func (s *service) GetCompanyByName(name string) (Company, error) {
+	return s.companyStore.GetByName(name)
+}
+
+// GetApproverByID retrieves an approver by their ID.
+func (s *service) GetApproverByID(id int) (Approver, error) {
+	return s.approverStore.GetByID(id)
+}
+
+// FindMatchingRule finds a workflow rule that matches the given criteria.
+func (s *service) FindMatchingRule(companyID int, amount float64, department string, requiresManager bool) (WorkflowRule, error) {
+	return s.workflowRuleStore.FindMatchingRule(companyID, amount, department, requiresManager)
 }

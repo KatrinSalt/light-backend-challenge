@@ -1,0 +1,62 @@
+companies:
+  - name: "Light"
+
+approvers:
+  - company_id: 1
+    name: "Finance Team Member"
+    role: "Finance Team"
+    email: "finance_team@light.com"
+    slack_id: "U123456"
+  
+  - company_id: 1
+    name: "Vera Sander"
+    role: "Finance Manager"
+    email: "vera_sander@light.com"
+    slack_id: "U789012"
+  
+  - company_id: 1
+    name: "Amanda Svensson"
+    role: "CFO"
+    email: "amanda_svensson@light.com"
+    slack_id: "U345678"
+  
+  - company_id: 1
+    name: "Sarah Johnson"
+    role: "CMO"
+    email: "sarah_johnson@light.com"
+    slack_id: "U456789"
+
+workflow_rules:
+  # Rule 1: Send approval request to finance team member via Slack when invoice < $5k
+  - company_id: 1
+    max_amount: 5000.0
+    approver_id: 1
+    approval_channel: 0  # 0 = slack, 1 = email
+  
+  # Rule 2: Send approval request to finance team member via Email when $5k <= invoice < $10k
+  - company_id: 1
+    min_amount: 5000.0
+    max_amount: 10000.0
+    approver_id: 1
+    approval_channel: 1  # email
+  
+  # Rule 3: Send approval request to finance manager via Email when $5k <= invoice < $10k and manager approval required
+  - company_id: 1
+    min_amount: 5000.0
+    max_amount: 10000.0
+    is_manager_approval_required: 1
+    approver_id: 2
+    approval_channel: 1  # email
+  
+  # Rule 4: Send approval request to CFO via Slack when invoice >= $10k (not marketing)
+  - company_id: 1
+    min_amount: 10000.0
+    approver_id: 3
+    approval_channel: 0  # slack
+  
+  # Rule 5: Send approval request to CMO via Email when invoice >= $10k and related to marketing
+  - company_id: 1
+    min_amount: 10000.0
+    department: "Marketing"
+    approver_id: 4
+    approval_channel: 1  # email

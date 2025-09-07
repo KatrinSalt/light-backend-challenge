@@ -61,8 +61,8 @@ func (s *approverStore) Create(approver Approver) (Approver, error) {
 	}
 	defer tx.Rollback()
 
-	insert := fmt.Sprintf("INSERT INTO %s (company_id, email, slack_id) VALUES ($1, $2, $3)", s.table)
-	if _, err := tx.Exec(insert, approver.CompanyID, approver.Email, approver.SlackID); err != nil {
+	insert := fmt.Sprintf("INSERT INTO %s (company_id, name, role, email, slack_id) VALUES ($1, $2, $3, $4, $5)", s.table)
+	if _, err := tx.Exec(insert, approver.CompanyID, approver.Name, approver.Role, approver.Email, approver.SlackID); err != nil {
 		if strings.Contains(err.Error(), sql.SQLStateDuplicateKey) {
 			return Approver{}, ErrApproverAlreadyExists
 		}
@@ -71,8 +71,8 @@ func (s *approverStore) Create(approver Approver) (Approver, error) {
 
 	// Get the created approver with its generated ID.
 	var outApprover Approver
-	query := fmt.Sprintf("SELECT id, company_id, email, slack_id FROM %s WHERE company_id = $1 AND email = $2", s.table)
-	if err := tx.QueryRow(query, approver.CompanyID, approver.Email).Scan(&outApprover.ID, &outApprover.CompanyID, &outApprover.Email, &outApprover.SlackID); err != nil {
+	query := fmt.Sprintf("SELECT id, company_id, name, role, email, slack_id FROM %s WHERE company_id = $1 AND email = $2", s.table)
+	if err := tx.QueryRow(query, approver.CompanyID, approver.Email).Scan(&outApprover.ID, &outApprover.CompanyID, &outApprover.Name, &outApprover.Role, &outApprover.Email, &outApprover.SlackID); err != nil {
 		return Approver{}, err
 	}
 
@@ -86,8 +86,8 @@ func (s *approverStore) Create(approver Approver) (Approver, error) {
 // GetByID retrieves an approver by their ID.
 func (s *approverStore) GetByID(id int) (Approver, error) {
 	var approver Approver
-	query := fmt.Sprintf("SELECT id, company_id, email, slack_id FROM %s WHERE id = $1", s.table)
-	err := s.client.QueryRow(query, id).Scan(&approver.ID, &approver.CompanyID, &approver.Email, &approver.SlackID)
+	query := fmt.Sprintf("SELECT id, company_id, name, role, email, slack_id FROM %s WHERE id = $1", s.table)
+	err := s.client.QueryRow(query, id).Scan(&approver.ID, &approver.CompanyID, &approver.Name, &approver.Role, &approver.Email, &approver.SlackID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Approver{}, ErrApproverNotFound
