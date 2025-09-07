@@ -19,20 +19,20 @@ func main() {
 	logger := common.NewLogger()
 	logger.Info("Starting CLI service")
 
-	// Load configuration
+	// Load configuration.
 	cfg, err := config.New(config.WithFlags(flags))
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 	logger.Info("Configuration loaded", "config", cfg)
 
-	// Setup workflow service
+	// Setup CLI service.
 	cliService, err := config.SetUpCliService(logger, cfg)
 	if err != nil {
-		log.Fatalf("Failed to setup workflow service: %v", err)
+		log.Fatalf("Failed to setup CLI service: %v", err)
 	}
 
-	// Run the CLI service
+	// Run the CLI service.
 	if err := cliService.Run(); err != nil {
 		log.Fatalf("CLI service failed: %v", err)
 	}
