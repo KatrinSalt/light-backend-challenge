@@ -13,6 +13,11 @@ const (
 	emailApprovalChannel approvalChannel = "email"
 )
 
+var (
+	// ErrUnsupportedApprovalChannel is returned when an unsupported approval channel is used.
+	ErrUnsupportedApprovalChannel = errors.New("unsupported approval channel")
+)
+
 // database interface for the database operations.
 type databaseService interface {
 	GetCompanyByName(name string) (db.Company, error)
@@ -127,14 +132,17 @@ func (s *service) ProcessInvoice(invoice api.InvoiceRequest) (api.ApprovalRespon
 
 }
 
+// GetCompanyName returns the company name.
 func (s *service) GetCompanyName() string {
 	return s.company.Name
 }
 
+// GetCompanyDepartments returns the company departments.
 func (s *service) GetCompanyDepartments() []string {
 	return s.company.Departments
 }
 
+// getCompanyID returns the company ID.
 func (s *service) getCompanyID(companyName string) (int, error) {
 	company, err := s.db.GetCompanyByName(companyName)
 	if err != nil {
@@ -144,6 +152,7 @@ func (s *service) getCompanyID(companyName string) (int, error) {
 	return company.ID, nil
 }
 
+// findMatchingRule finds the matching rule given the invoice details.
 func (s *service) findMatchingRule(q invoiceQuery) (db.WorkflowRule, error) {
 	// Find matching rule given the invoice details.
 	rule, err := s.db.FindMatchingRule(q.companyID, q.amount, q.department, q.isManagerApprovalRequired)
@@ -154,6 +163,7 @@ func (s *service) findMatchingRule(q invoiceQuery) (db.WorkflowRule, error) {
 	return rule, nil
 }
 
+// getApproverInfo returns the approver information.
 func (s *service) getApproverInfo(rule db.WorkflowRule) (approver, error) {
 	a, err := s.db.GetApproverByID(rule.ApproverID)
 	if err != nil {
@@ -180,6 +190,7 @@ func (s *service) getApproverInfo(rule db.WorkflowRule) (approver, error) {
 	}, nil
 }
 
+// sendApprovalRequest sends the approval request.
 func (s *service) sendApprovalRequest(approver approver, invoiceReq api.InvoiceRequest) (api.ApprovalResponse, error) {
 	approvalRequest := toApprovalRequest(approver, invoiceReq)
 

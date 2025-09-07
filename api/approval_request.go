@@ -7,7 +7,7 @@ type ApprovalRequest struct {
 }
 
 func (a *ApprovalRequest) Validate() error {
-	if err := a.Approver.validate(); err != nil {
+	if err := a.Approver.Validate(); err != nil {
 		return err
 	}
 	return nil

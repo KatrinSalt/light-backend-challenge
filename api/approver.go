@@ -3,7 +3,8 @@ package api
 import "errors"
 
 var (
-	ErrMissingContactID = errors.New("slack_id or email is missing")
+	ErrMissingEmail   = errors.New("email is missing")
+	ErrMissingSlackID = errors.New("slack_id is missing")
 )
 
 // Approver represents a person who can approve invoices.
@@ -14,9 +15,13 @@ type Approver struct {
 	SlackID string `json:"slack_id"`
 }
 
-func (a *Approver) validate() error {
-	if a.Email == "" && a.SlackID == "" {
-		return ErrMissingContactID
+func (a *Approver) Validate() error {
+	if a.Email == "" {
+		return ErrMissingEmail
 	}
+	if a.SlackID == "" {
+		return ErrMissingSlackID
+	}
+
 	return nil
 }
