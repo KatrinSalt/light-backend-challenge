@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/KatrinSalt/backend-challenge-go/db/sql"
@@ -733,6 +734,18 @@ func (m *mockApproverStore) GetByID(id int) (Approver, error) {
 	return m.approver, nil
 }
 
+func (m *mockApproverStore) Update(approver Approver) error {
+	return nil
+}
+
+func (m *mockApproverStore) Delete(id int) error {
+	return nil
+}
+
+func (m *mockApproverStore) List(companyID int) ([]Approver, error) {
+	return []Approver{m.approver}, nil
+}
+
 type mockWorkflowRuleStore struct {
 	createErr           error
 	findMatchingRuleErr error
@@ -746,8 +759,8 @@ func (m *mockWorkflowRuleStore) Create(rule WorkflowRule) (WorkflowRule, error) 
 	return m.rule, nil
 }
 
-func (m *mockWorkflowRuleStore) GetByCompanyID(companyID int) ([]WorkflowRule, error) {
-	return nil, nil
+func (m *mockWorkflowRuleStore) List(companyID int) ([]WorkflowRule, error) {
+	return []WorkflowRule{m.rule}, nil
 }
 
 func (m *mockWorkflowRuleStore) FindMatchingRule(companyID int, amount float64, department string, requiresManager bool) (WorkflowRule, error) {
@@ -755,4 +768,452 @@ func (m *mockWorkflowRuleStore) FindMatchingRule(companyID int, amount float64, 
 		return WorkflowRule{}, m.findMatchingRuleErr
 	}
 	return m.rule, nil
+}
+
+func (m *mockWorkflowRuleStore) GetByID(id int) (WorkflowRule, error) {
+	return m.rule, nil
+}
+
+func (m *mockWorkflowRuleStore) Update(rule WorkflowRule) error {
+	return nil
+}
+
+func (m *mockWorkflowRuleStore) Delete(id int) error {
+	return nil
+}
+
+func TestService_GetWorkflowRuleByID(t *testing.T) {
+	tests := []struct {
+		name  string
+		input struct {
+			service *service
+			id      int
+		}
+		want    WorkflowRule
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "successful workflow rule retrieval by ID",
+			input: struct {
+				service *service
+				id      int
+			}{
+				service: &service{
+					workflowRuleStore: &mockWorkflowRuleStore{
+						rule: WorkflowRule{
+							ID:                        1,
+							CompanyID:                 1,
+							MinAmount:                 floatPtr(100.0),
+							MaxAmount:                 floatPtr(500.0),
+							Department:                stringPtr("Finance"),
+							IsManagerApprovalRequired: intPtr(1),
+							ApproverID:                1,
+							ApprovalChannel:           0,
+						},
+					},
+				},
+				id: 1,
+			},
+			want: WorkflowRule{
+				ID:                        1,
+				CompanyID:                 1,
+				MinAmount:                 floatPtr(100.0),
+				MaxAmount:                 floatPtr(500.0),
+				Department:                stringPtr("Finance"),
+				IsManagerApprovalRequired: intPtr(1),
+				ApproverID:                1,
+				ApprovalChannel:           0,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, gotErr := test.input.service.GetWorkflowRuleByID(test.input.id)
+
+			if test.wantErr {
+				if gotErr == nil {
+					t.Errorf("GetWorkflowRuleByID() expected error but got none")
+					return
+				}
+				if test.errMsg != "" && !strings.Contains(gotErr.Error(), test.errMsg) {
+					t.Errorf("GetWorkflowRuleByID() expected error containing %q but got %q", test.errMsg, gotErr.Error())
+				}
+				return
+			}
+
+			if gotErr != nil {
+				t.Errorf("GetWorkflowRuleByID() unexpected error: %v", gotErr)
+				return
+			}
+
+			if got.ID != test.want.ID {
+				t.Errorf("GetWorkflowRuleByID() ID = %v, want %v", got.ID, test.want.ID)
+			}
+		})
+	}
+}
+
+func TestService_UpdateWorkflowRule(t *testing.T) {
+	tests := []struct {
+		name  string
+		input struct {
+			service *service
+			rule    WorkflowRule
+		}
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "successful workflow rule update",
+			input: struct {
+				service *service
+				rule    WorkflowRule
+			}{
+				service: &service{
+					workflowRuleStore: &mockWorkflowRuleStore{},
+				},
+				rule: WorkflowRule{
+					ID:                        1,
+					CompanyID:                 1,
+					MinAmount:                 floatPtr(200.0),
+					MaxAmount:                 floatPtr(1000.0),
+					Department:                stringPtr("IT"),
+					IsManagerApprovalRequired: intPtr(0),
+					ApproverID:                2,
+					ApprovalChannel:           1,
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gotErr := test.input.service.UpdateWorkflowRule(test.input.rule)
+
+			if test.wantErr {
+				if gotErr == nil {
+					t.Errorf("UpdateWorkflowRule() expected error but got none")
+					return
+				}
+				if test.errMsg != "" && !strings.Contains(gotErr.Error(), test.errMsg) {
+					t.Errorf("UpdateWorkflowRule() expected error containing %q but got %q", test.errMsg, gotErr.Error())
+				}
+				return
+			}
+
+			if gotErr != nil {
+				t.Errorf("UpdateWorkflowRule() unexpected error: %v", gotErr)
+			}
+		})
+	}
+}
+
+func TestService_DeleteWorkflowRule(t *testing.T) {
+	tests := []struct {
+		name  string
+		input struct {
+			service *service
+			id      int
+		}
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "successful workflow rule deletion",
+			input: struct {
+				service *service
+				id      int
+			}{
+				service: &service{
+					workflowRuleStore: &mockWorkflowRuleStore{},
+				},
+				id: 1,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gotErr := test.input.service.DeleteWorkflowRule(test.input.id)
+
+			if test.wantErr {
+				if gotErr == nil {
+					t.Errorf("DeleteWorkflowRule() expected error but got none")
+					return
+				}
+				if test.errMsg != "" && !strings.Contains(gotErr.Error(), test.errMsg) {
+					t.Errorf("DeleteWorkflowRule() expected error containing %q but got %q", test.errMsg, gotErr.Error())
+				}
+				return
+			}
+
+			if gotErr != nil {
+				t.Errorf("DeleteWorkflowRule() unexpected error: %v", gotErr)
+			}
+		})
+	}
+}
+
+func TestService_UpdateApprover(t *testing.T) {
+	tests := []struct {
+		name  string
+		input struct {
+			service  *service
+			approver Approver
+		}
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "successful approver update",
+			input: struct {
+				service  *service
+				approver Approver
+			}{
+				service: &service{
+					approverStore: &mockApproverStore{},
+				},
+				approver: Approver{
+					ID:        1,
+					CompanyID: 1,
+					Name:      "John Doe Updated",
+					Role:      "Senior Manager",
+					Email:     "john.updated@example.com",
+					SlackID:   "UPDATED123",
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gotErr := test.input.service.UpdateApprover(test.input.approver)
+
+			if test.wantErr {
+				if gotErr == nil {
+					t.Errorf("UpdateApprover() expected error but got none")
+					return
+				}
+				if test.errMsg != "" && !strings.Contains(gotErr.Error(), test.errMsg) {
+					t.Errorf("UpdateApprover() expected error containing %q but got %q", test.errMsg, gotErr.Error())
+				}
+				return
+			}
+
+			if gotErr != nil {
+				t.Errorf("UpdateApprover() unexpected error: %v", gotErr)
+			}
+		})
+	}
+}
+
+func TestService_DeleteApprover(t *testing.T) {
+	tests := []struct {
+		name  string
+		input struct {
+			service *service
+			id      int
+		}
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "successful approver deletion",
+			input: struct {
+				service *service
+				id      int
+			}{
+				service: &service{
+					approverStore: &mockApproverStore{},
+				},
+				id: 1,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gotErr := test.input.service.DeleteApprover(test.input.id)
+
+			if test.wantErr {
+				if gotErr == nil {
+					t.Errorf("DeleteApprover() expected error but got none")
+					return
+				}
+				if test.errMsg != "" && !strings.Contains(gotErr.Error(), test.errMsg) {
+					t.Errorf("DeleteApprover() expected error containing %q but got %q", test.errMsg, gotErr.Error())
+				}
+				return
+			}
+
+			if gotErr != nil {
+				t.Errorf("DeleteApprover() unexpected error: %v", gotErr)
+			}
+		})
+	}
+}
+
+func TestService_ListWorkflowRules(t *testing.T) {
+	tests := []struct {
+		name  string
+		input struct {
+			service   *service
+			companyID int
+		}
+		want    []WorkflowRule
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "successful workflow rules retrieval by company ID",
+			input: struct {
+				service   *service
+				companyID int
+			}{
+				service: &service{
+					workflowRuleStore: &mockWorkflowRuleStore{
+						rule: WorkflowRule{
+							ID:                        1,
+							CompanyID:                 1,
+							MinAmount:                 floatPtr(100.0),
+							MaxAmount:                 floatPtr(500.0),
+							Department:                stringPtr("Finance"),
+							IsManagerApprovalRequired: intPtr(1),
+							ApproverID:                1,
+							ApprovalChannel:           0,
+						},
+					},
+				},
+				companyID: 1,
+			},
+			want: []WorkflowRule{
+				{
+					ID:                        1,
+					CompanyID:                 1,
+					MinAmount:                 floatPtr(100.0),
+					MaxAmount:                 floatPtr(500.0),
+					Department:                stringPtr("Finance"),
+					IsManagerApprovalRequired: intPtr(1),
+					ApproverID:                1,
+					ApprovalChannel:           0,
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, gotErr := test.input.service.ListWorkflowRules(test.input.companyID)
+
+			if test.wantErr {
+				if gotErr == nil {
+					t.Errorf("ListWorkflowRules() expected error but got none")
+					return
+				}
+				if test.errMsg != "" && !strings.Contains(gotErr.Error(), test.errMsg) {
+					t.Errorf("ListWorkflowRules() expected error containing %q but got %q", test.errMsg, gotErr.Error())
+				}
+				return
+			}
+
+			if gotErr != nil {
+				t.Errorf("ListWorkflowRules() unexpected error: %v", gotErr)
+				return
+			}
+
+			if len(got) != len(test.want) {
+				t.Errorf("ListWorkflowRules() returned %d rules, want %d", len(got), len(test.want))
+				return
+			}
+
+			if len(got) > 0 && got[0].ID != test.want[0].ID {
+				t.Errorf("ListWorkflowRules() first rule ID = %v, want %v", got[0].ID, test.want[0].ID)
+			}
+		})
+	}
+}
+
+func TestService_ListApprovers(t *testing.T) {
+	tests := []struct {
+		name  string
+		input struct {
+			service   *service
+			companyID int
+		}
+		want    []Approver
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "successful approvers retrieval by company ID",
+			input: struct {
+				service   *service
+				companyID int
+			}{
+				service: &service{
+					approverStore: &mockApproverStore{
+						approver: Approver{
+							ID:        1,
+							CompanyID: 1,
+							Name:      "John Doe",
+							Role:      "Manager",
+							Email:     "john@example.com",
+							SlackID:   "U123456",
+						},
+					},
+				},
+				companyID: 1,
+			},
+			want: []Approver{
+				{
+					ID:        1,
+					CompanyID: 1,
+					Name:      "John Doe",
+					Role:      "Manager",
+					Email:     "john@example.com",
+					SlackID:   "U123456",
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, gotErr := test.input.service.ListApprovers(test.input.companyID)
+
+			if test.wantErr {
+				if gotErr == nil {
+					t.Errorf("ListApprovers() expected error but got none")
+					return
+				}
+				if test.errMsg != "" && !strings.Contains(gotErr.Error(), test.errMsg) {
+					t.Errorf("ListApprovers() expected error containing %q but got %q", test.errMsg, gotErr.Error())
+				}
+				return
+			}
+
+			if gotErr != nil {
+				t.Errorf("ListApprovers() unexpected error: %v", gotErr)
+				return
+			}
+
+			if len(got) != len(test.want) {
+				t.Errorf("ListApprovers() returned %d approvers, want %d", len(got), len(test.want))
+				return
+			}
+
+			if len(got) > 0 && got[0].ID != test.want[0].ID {
+				t.Errorf("ListApprovers() first approver ID = %v, want %v", got[0].ID, test.want[0].ID)
+			}
+		})
+	}
 }

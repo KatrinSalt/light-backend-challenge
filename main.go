@@ -26,14 +26,14 @@ func main() {
 	}
 	logger.Info("Configuration loaded", "config", cfg)
 
-	// Setup CLI service.
-	cliService, err := config.SetUpCliService(logger, cfg)
+	// Setup services.
+	services, err := config.SetUpServices(logger, cfg)
 	if err != nil {
-		log.Fatalf("Failed to setup CLI service: %v", err)
+		log.Fatalf("Failed to setup services: %v", err)
 	}
 
 	// Run the CLI service.
-	if err := cliService.Run(); err != nil {
+	if err := services.CLI.Run(); err != nil {
 		log.Fatalf("CLI service failed: %v", err)
 	}
 }

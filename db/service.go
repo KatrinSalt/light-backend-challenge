@@ -13,8 +13,19 @@ type Service interface {
 	Initialize() error
 	SeedSampleData() error
 	GetCompanyByName(name string) (Company, error)
-	GetApproverByID(id int) (Approver, error)
+	// Workflow Rule Management
+	CreateWorkflowRule(rule WorkflowRule) (WorkflowRule, error)
+	GetWorkflowRuleByID(id int) (WorkflowRule, error)
+	ListWorkflowRules(companyID int) ([]WorkflowRule, error)
+	UpdateWorkflowRule(rule WorkflowRule) error
+	DeleteWorkflowRule(id int) error
 	FindMatchingRule(companyID int, amount float64, department string, requiresManager bool) (WorkflowRule, error)
+	// Approver Management
+	CreateApprover(approver Approver) (Approver, error)
+	GetApproverByID(id int) (Approver, error)
+	ListApprovers(companyID int) ([]Approver, error)
+	UpdateApprover(approver Approver) error
+	DeleteApprover(id int) error
 }
 
 // Service provides a centralized interface for all database operations.
@@ -187,6 +198,11 @@ func (s *service) GetCompanyByName(name string) (Company, error) {
 	return s.companyStore.GetByName(name)
 }
 
+// CreateApprover creates a new approver.
+func (s *service) CreateApprover(approver Approver) (Approver, error) {
+	return s.approverStore.Create(approver)
+}
+
 // GetApproverByID retrieves an approver by their ID.
 func (s *service) GetApproverByID(id int) (Approver, error) {
 	return s.approverStore.GetByID(id)
@@ -195,4 +211,44 @@ func (s *service) GetApproverByID(id int) (Approver, error) {
 // FindMatchingRule finds a workflow rule that matches the given criteria.
 func (s *service) FindMatchingRule(companyID int, amount float64, department string, requiresManager bool) (WorkflowRule, error) {
 	return s.workflowRuleStore.FindMatchingRule(companyID, amount, department, requiresManager)
+}
+
+// CreateWorkflowRule creates a new workflow rule.
+func (s *service) CreateWorkflowRule(rule WorkflowRule) (WorkflowRule, error) {
+	return s.workflowRuleStore.Create(rule)
+}
+
+// GetWorkflowRuleByID retrieves a workflow rule by its ID.
+func (s *service) GetWorkflowRuleByID(id int) (WorkflowRule, error) {
+	return s.workflowRuleStore.GetByID(id)
+}
+
+// UpdateWorkflowRule updates an existing workflow rule.
+func (s *service) UpdateWorkflowRule(rule WorkflowRule) error {
+	return s.workflowRuleStore.Update(rule)
+}
+
+// DeleteWorkflowRule deletes a workflow rule by its ID.
+func (s *service) DeleteWorkflowRule(id int) error {
+	return s.workflowRuleStore.Delete(id)
+}
+
+// UpdateApprover updates an existing approver.
+func (s *service) UpdateApprover(approver Approver) error {
+	return s.approverStore.Update(approver)
+}
+
+// DeleteApprover deletes an approver by their ID.
+func (s *service) DeleteApprover(id int) error {
+	return s.approverStore.Delete(id)
+}
+
+// ListWorkflowRules retrieves all workflow rules for a specific company.
+func (s *service) ListWorkflowRules(companyID int) ([]WorkflowRule, error) {
+	return s.workflowRuleStore.List(companyID)
+}
+
+// ListApprovers retrieves all approvers for a specific company.
+func (s *service) ListApprovers(companyID int) ([]Approver, error) {
+	return s.approverStore.List(companyID)
 }

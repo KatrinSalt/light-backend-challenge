@@ -17,6 +17,9 @@ var (
 type ApproverStore interface {
 	Create(approver Approver) (Approver, error)
 	GetByID(id int) (Approver, error)
+	Update(approver Approver) error
+	Delete(id int) error
+	List(companyID int) ([]Approver, error)
 }
 
 // approverStore implements ApproverStore
@@ -95,4 +98,127 @@ func (s *approverStore) GetByID(id int) (Approver, error) {
 		return Approver{}, err
 	}
 	return approver, nil
+}
+
+// Update updates an existing approver.
+func (s *approverStore) Update(approver Approver) error {
+	tx, err := s.client.Transaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Check if the approver exists
+	var exists bool
+	checkQuery := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE id = $1)", s.table)
+	if err := tx.QueryRow(checkQuery, approver.ID).Scan(&exists); err != nil {
+		return fmt.Errorf("failed to check if approver exists: %w", err)
+	}
+
+	if !exists {
+		return ErrApproverNotFound
+	}
+
+	// Update the approver
+	updateQuery := fmt.Sprintf(`
+		UPDATE %s 
+		SET company_id = $2, name = $3, role = $4, email = $5, slack_id = $6 
+		WHERE id = $1`, s.table)
+
+	result, err := tx.Exec(updateQuery,
+		approver.ID,
+		approver.CompanyID,
+		approver.Name,
+		approver.Role,
+		approver.Email,
+		approver.SlackID)
+
+	if err != nil {
+		return fmt.Errorf("failed to update approver: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrApproverNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// List retrieves all approvers for a specific company.
+func (s *approverStore) List(companyID int) ([]Approver, error) {
+	query := fmt.Sprintf("SELECT id, company_id, name, role, email, slack_id FROM %s WHERE company_id = ?", s.table)
+
+	rows, err := s.client.Query(query, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query approvers by company ID: %w", err)
+	}
+	defer rows.Close()
+
+	var approvers []Approver
+	for rows.Next() {
+		var approver Approver
+		err := rows.Scan(&approver.ID, &approver.CompanyID, &approver.Name, &approver.Role, &approver.Email, &approver.SlackID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan approver: %w", err)
+		}
+		approvers = append(approvers, approver)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over approver rows: %w", err)
+	}
+
+	return approvers, nil
+}
+
+// Delete deletes an approver by their ID.
+func (s *approverStore) Delete(id int) error {
+	tx, err := s.client.Transaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Check if the approver exists
+	var exists bool
+	checkQuery := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE id = $1)", s.table)
+	if err := tx.QueryRow(checkQuery, id).Scan(&exists); err != nil {
+		return fmt.Errorf("failed to check if approver exists: %w", err)
+	}
+
+	if !exists {
+		return ErrApproverNotFound
+	}
+
+	// Delete the approver
+	deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE id = $1", s.table)
+	result, err := tx.Exec(deleteQuery, id)
+
+	if err != nil {
+		return fmt.Errorf("failed to delete approver: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrApproverNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }

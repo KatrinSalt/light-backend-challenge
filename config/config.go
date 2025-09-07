@@ -29,16 +29,11 @@ type Configuration struct {
 }
 
 type Services struct {
-	Workflow Workflow
+	Company  Company
 	Database Database
 	Slack    Slack
 	Email    Email
 }
-
-type Workflow struct {
-	Company Company
-}
-
 type Company struct {
 	Name        string   `env:"COMPANY_NAME"`
 	Departments []string `env:"COMPANY_DEPARTMENTS"`
@@ -75,11 +70,9 @@ func New(options ...Option) (Configuration, error) {
 
 	cfg := Configuration{
 		Services: Services{
-			Workflow: Workflow{
-				Company: Company{
-					Name:        defaultCompanyName,
-					Departments: defaultCompanyDepartments,
-				},
+			Company: Company{
+				Name:        defaultCompanyName,
+				Departments: defaultCompanyDepartments,
 			},
 			Database: Database{
 				// Placeholder for database schema.
@@ -98,14 +91,14 @@ func New(options ...Option) (Configuration, error) {
 	// Apply flag values if provided.
 	if opts.Flags != nil {
 		if opts.Flags.companyName != "" {
-			cfg.Services.Workflow.Company.Name = opts.Flags.companyName
+			cfg.Services.Company.Name = opts.Flags.companyName
 		}
 		if opts.Flags.departments != "" {
 			departments := strings.Split(opts.Flags.departments, ",")
 			for i, dept := range departments {
 				departments[i] = strings.TrimSpace(dept)
 			}
-			cfg.Services.Workflow.Company.Departments = departments
+			cfg.Services.Company.Departments = departments
 		}
 		if opts.Flags.slack != "" {
 			cfg.Services.Slack.ConnectionString = opts.Flags.slack

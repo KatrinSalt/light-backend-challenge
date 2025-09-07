@@ -7,28 +7,59 @@ import (
 	"github.com/KatrinSalt/backend-challenge-go/common"
 	"github.com/KatrinSalt/backend-challenge-go/db"
 	"github.com/KatrinSalt/backend-challenge-go/db/sqlite"
+	"github.com/KatrinSalt/backend-challenge-go/management"
 	"github.com/KatrinSalt/backend-challenge-go/notification/email"
 	"github.com/KatrinSalt/backend-challenge-go/notification/slack"
 	"github.com/KatrinSalt/backend-challenge-go/workflow"
 )
 
-func SetUpCliService(log common.Logger, cfg Configuration) (cli.Service, error) {
-	// Setup workflow service.
-	workflowSvc, err := setUpWorkflowService(log, cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create CLI service.
-	return cli.NewService(workflowSvc, cli.WithLogger(log))
+// Services contains the services for the application.
+type services struct {
+	CLI        cli.Service
+	Management management.Service
 }
 
-func setUpWorkflowService(log common.Logger, cfg Configuration) (workflow.Service, error) {
+func SetUpServices(log common.Logger, cfg Configuration) (*services, error) {
 	dbSvc, err := setUpDatabaseService(cfg.Services.Database)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database service: %v", err)
 	}
+	// Create CLI service.
+	cliSvc, err := setUpCLIService(log, dbSvc, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CLI service: %v", err)
+	}
+	// Create management service.
+	managementSvc, err := setUpManagementService(log, dbSvc, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create management service: %v", err)
+	}
 
+	return &services{
+		CLI:        cliSvc,
+		Management: managementSvc,
+	}, nil
+
+}
+
+// setUpCLIService creates and configures a CLI service.
+func setUpCLIService(log common.Logger, dbSvc db.Service, cfg Configuration) (cli.Service, error) {
+	// Setup workflow service.
+	workflowSvc, err := setUpWorkflowService(log, dbSvc, cfg)
+	if err != nil {
+		return nil, err
+	}
+	// Create CLI service.
+	return cli.NewService(workflowSvc, cli.WithLogger(log))
+}
+
+// setUpManagementService creates and configures a management service.
+func setUpManagementService(log common.Logger, dbSvc db.Service, cfg Configuration) (management.Service, error) {
+	// Create management service with company name.
+	return management.NewService(log, dbSvc, cfg.Services.Company.Name)
+}
+
+func setUpWorkflowService(log common.Logger, dbSvc db.Service, cfg Configuration) (workflow.Service, error) {
 	// Create slack notification service.
 	slackSvc, err := slack.NewService(cfg.Services.Slack.ConnectionString, slack.WithLogger(log))
 	if err != nil {
@@ -43,8 +74,8 @@ func setUpWorkflowService(log common.Logger, cfg Configuration) (workflow.Servic
 
 	// Create workflow service.
 	workflowCompany := workflow.Company{
-		Name:        cfg.Services.Workflow.Company.Name,
-		Departments: cfg.Services.Workflow.Company.Departments,
+		Name:        cfg.Services.Company.Name,
+		Departments: cfg.Services.Company.Departments,
 	}
 	workflowSvc, err := workflow.NewService(workflowCompany, dbSvc, slackSvc, emailSvc, workflow.WithLogger(log))
 	if err != nil {
@@ -52,7 +83,7 @@ func setUpWorkflowService(log common.Logger, cfg Configuration) (workflow.Servic
 	}
 
 	if err := workflowSvc.ValidateCompany(); err != nil {
-		return nil, fmt.Errorf("failed to start workflow service for company %s: %v", cfg.Services.Workflow.Company.Name, err)
+		return nil, fmt.Errorf("failed to start workflow service for company %s: %v", cfg.Services.Company.Name, err)
 	}
 
 	return workflowSvc, nil

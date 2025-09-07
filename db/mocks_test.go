@@ -116,6 +116,10 @@ func (m *mockSQLRow) Scan(dest ...interface{}) error {
 			if v, ok := val.(*int); ok {
 				*d = v
 			}
+		case *bool:
+			if v, ok := val.(bool); ok {
+				*d = v
+			}
 		}
 	}
 	return nil
@@ -170,6 +174,10 @@ func (m *mockSQLRows) Scan(dest ...interface{}) error {
 			}
 		case **int:
 			if v, ok := val.(*int); ok {
+				*d = v
+			}
+		case *bool:
+			if v, ok := val.(bool); ok {
 				*d = v
 			}
 		}
