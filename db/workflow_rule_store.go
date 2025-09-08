@@ -16,7 +16,10 @@ var (
 // WorkflowRuleStore defines the interface for workflow rule operations
 type WorkflowRuleStore interface {
 	Create(workflowRule WorkflowRule) (WorkflowRule, error)
-	GetByCompanyID(companyID int) ([]WorkflowRule, error)
+	GetByID(id int) (WorkflowRule, error)
+	Update(workflowRule WorkflowRule) error
+	Delete(id int) error
+	List(companyID int) ([]WorkflowRule, error)
 	FindMatchingRule(companyID int, amount float64, department string, requiresManager bool) (WorkflowRule, error)
 }
 
@@ -84,8 +87,124 @@ func (s *workflowRuleStore) Create(workflowRule WorkflowRule) (WorkflowRule, err
 	return outWorkflowRule, nil
 }
 
-// GetByCompanyID retrieves all workflow rules for a specific company.
-func (s *workflowRuleStore) GetByCompanyID(companyID int) ([]WorkflowRule, error) {
+// GetByID retrieves a workflow rule by its ID.
+func (s *workflowRuleStore) GetByID(id int) (WorkflowRule, error) {
+	query := fmt.Sprintf("SELECT id, company_id, min_amount, max_amount, department, is_manager_approval_required, approver_id, approval_channel FROM %s WHERE id = $1", s.table)
+
+	var rule WorkflowRule
+	err := s.client.QueryRow(query, id).Scan(
+		&rule.ID,
+		&rule.CompanyID,
+		&rule.MinAmount,
+		&rule.MaxAmount,
+		&rule.Department,
+		&rule.IsManagerApprovalRequired,
+		&rule.ApproverID,
+		&rule.ApprovalChannel,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return WorkflowRule{}, ErrWorkflowRuleNotFound
+		}
+		return WorkflowRule{}, fmt.Errorf("failed to get workflow rule by ID: %w", err)
+	}
+
+	return rule, nil
+}
+
+// Update updates an existing workflow rule.
+func (s *workflowRuleStore) Update(workflowRule WorkflowRule) error {
+	tx, err := s.client.Transaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Check if the rule exists
+	var exists bool
+	checkQuery := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE id = $1)", s.table)
+	if err := tx.QueryRow(checkQuery, workflowRule.ID).Scan(&exists); err != nil {
+		return fmt.Errorf("failed to check if workflow rule exists: %w", err)
+	}
+
+	if !exists {
+		return ErrWorkflowRuleNotFound
+	}
+
+	// Update the workflow rule
+	updateQuery := fmt.Sprintf(`
+		UPDATE %s 
+		SET company_id = $2, min_amount = $3, max_amount = $4, department = $5, 
+		    is_manager_approval_required = $6, approver_id = $7, approval_channel = $8 
+		WHERE id = $1`, s.table)
+
+	_, err = tx.Exec(updateQuery,
+		workflowRule.ID,
+		workflowRule.CompanyID,
+		workflowRule.MinAmount,
+		workflowRule.MaxAmount,
+		workflowRule.Department,
+		workflowRule.IsManagerApprovalRequired,
+		workflowRule.ApproverID,
+		workflowRule.ApprovalChannel)
+
+	if err != nil {
+		return fmt.Errorf("failed to update workflow rule: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// Delete deletes a workflow rule by its ID.
+func (s *workflowRuleStore) Delete(id int) error {
+	tx, err := s.client.Transaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Check if the rule exists
+	var exists bool
+	checkQuery := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE id = $1)", s.table)
+	if err := tx.QueryRow(checkQuery, id).Scan(&exists); err != nil {
+		return fmt.Errorf("failed to check if workflow rule exists: %w", err)
+	}
+
+	if !exists {
+		return ErrWorkflowRuleNotFound
+	}
+
+	// Delete the workflow rule
+	deleteQuery := fmt.Sprintf("DELETE FROM %s WHERE id = $1", s.table)
+	result, err := tx.Exec(deleteQuery, id)
+
+	if err != nil {
+		return fmt.Errorf("failed to delete workflow rule: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrWorkflowRuleNotFound
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// List retrieves all workflow rules for a specific company.
+func (s *workflowRuleStore) List(companyID int) ([]WorkflowRule, error) {
 	query := fmt.Sprintf("SELECT id, company_id, min_amount, max_amount, department, is_manager_approval_required, approver_id, approval_channel FROM %s WHERE company_id = $1", s.table)
 
 	rows, err := s.client.Query(query, companyID)
