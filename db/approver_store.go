@@ -155,7 +155,7 @@ func (s *approverStore) Update(approver Approver) error {
 
 // List retrieves all approvers for a specific company.
 func (s *approverStore) List(companyID int) ([]Approver, error) {
-	query := fmt.Sprintf("SELECT id, company_id, name, role, email, slack_id FROM %s WHERE company_id = ?", s.table)
+	query := fmt.Sprintf("SELECT id, company_id, name, role, email, slack_id FROM %s WHERE company_id = $1", s.table)
 
 	rows, err := s.client.Query(query, companyID)
 	if err != nil {

@@ -54,8 +54,8 @@ type service struct {
 
 // Company represents a company in the management service.
 type company struct {
-	id   int    `json:"id"`
-	name string `json:"name"`
+	id   int
+	name string
 }
 
 // NewService creates a new management service.
@@ -84,12 +84,13 @@ func NewService(logger common.Logger, dbService databaseService, companyName str
 
 // CreateWorkflowRule creates a new workflow rule.
 func (s *service) CreateWorkflowRule(rule api.WorkflowRule) (api.WorkflowRule, error) {
+	// Set the company ID from the service
+	rule.CompanyID = s.company.id
+
+	// Validate after setting company ID
 	if err := rule.Validate(); err != nil {
 		return api.WorkflowRule{}, fmt.Errorf("invalid workflow rule: %w", err)
 	}
-
-	// Set the company ID from the service
-	rule.CompanyID = s.company.id
 
 	// Convert API struct to DB struct
 	dbRule := s.apiToDBWorkflowRule(rule)
@@ -112,7 +113,7 @@ func (s *service) GetWorkflowRuleByID(id int) (api.WorkflowRule, error) {
 
 	dbRule, err := s.dbService.GetWorkflowRuleByID(id)
 	if err != nil {
-		return api.WorkflowRule{}, fmt.Errorf("failed to get workflow rule: %w", err)
+		return api.WorkflowRule{}, err
 	}
 
 	return s.dbToAPIWorkflowRule(dbRule), nil
@@ -120,6 +121,10 @@ func (s *service) GetWorkflowRuleByID(id int) (api.WorkflowRule, error) {
 
 // UpdateWorkflowRule updates an existing workflow rule.
 func (s *service) UpdateWorkflowRule(rule api.WorkflowRule) error {
+	// Set the company ID from the service
+	rule.CompanyID = s.company.id
+
+	// Validate after setting company ID
 	if err := rule.Validate(); err != nil {
 		return fmt.Errorf("invalid workflow rule: %w", err)
 	}
@@ -133,7 +138,7 @@ func (s *service) UpdateWorkflowRule(rule api.WorkflowRule) error {
 
 	// Update in database
 	if err := s.dbService.UpdateWorkflowRule(dbRule); err != nil {
-		return fmt.Errorf("failed to update workflow rule: %w", err)
+		return err
 	}
 
 	return nil
@@ -146,7 +151,7 @@ func (s *service) DeleteWorkflowRule(id int) error {
 	}
 
 	if err := s.dbService.DeleteWorkflowRule(id); err != nil {
-		return fmt.Errorf("failed to delete workflow rule: %w", err)
+		return err
 	}
 
 	return nil
@@ -156,7 +161,7 @@ func (s *service) DeleteWorkflowRule(id int) error {
 func (s *service) ListWorkflowRules() ([]api.WorkflowRule, error) {
 	dbRules, err := s.dbService.ListWorkflowRules(s.company.id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list workflow rules: %w", err)
+		return nil, err
 	}
 
 	// Convert DB structs to API structs
@@ -264,14 +269,9 @@ func (s *service) apiToDBWorkflowRule(rule api.WorkflowRule) db.WorkflowRule {
 		ApprovalChannel: rule.ApprovalChannel,
 	}
 
-	// Convert bool to *int for IsManagerApprovalRequired
-	if rule.IsManagerApprovalRequired != nil {
-		var value int
-		if *rule.IsManagerApprovalRequired {
-			value = 1
-		}
-		dbRule.IsManagerApprovalRequired = &value
-	}
+	// Convert int to *int for IsManagerApprovalRequired
+	value := rule.IsManagerApprovalRequired
+	dbRule.IsManagerApprovalRequired = &value
 
 	return dbRule
 }
@@ -287,10 +287,11 @@ func (s *service) dbToAPIWorkflowRule(rule db.WorkflowRule) api.WorkflowRule {
 		ApprovalChannel: rule.ApprovalChannel,
 	}
 
-	// Convert *int to *bool for IsManagerApprovalRequired
+	// Convert *int to int for IsManagerApprovalRequired
 	if rule.IsManagerApprovalRequired != nil {
-		value := *rule.IsManagerApprovalRequired == 1
-		apiRule.IsManagerApprovalRequired = &value
+		apiRule.IsManagerApprovalRequired = *rule.IsManagerApprovalRequired
+	} else {
+		apiRule.IsManagerApprovalRequired = 0 // Default to 0 (No)
 	}
 
 	return apiRule

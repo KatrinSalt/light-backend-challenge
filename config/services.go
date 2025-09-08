@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 
-	"github.com/KatrinSalt/backend-challenge-go/cli"
 	"github.com/KatrinSalt/backend-challenge-go/common"
 	"github.com/KatrinSalt/backend-challenge-go/db"
 	"github.com/KatrinSalt/backend-challenge-go/db/sqlite"
@@ -14,20 +13,20 @@ import (
 )
 
 // Services contains the services for the application.
-type services struct {
-	CLI        cli.Service
+type Services struct {
+	Workflow   workflow.Service
 	Management management.Service
 }
 
-func SetUpServices(log common.Logger, cfg Configuration) (*services, error) {
+func SetUpServices(log common.Logger, cfg Configuration) (*Services, error) {
 	dbSvc, err := setUpDatabaseService(cfg.Services.Database)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database service: %v", err)
 	}
-	// Create CLI service.
-	cliSvc, err := setUpCLIService(log, dbSvc, cfg)
+	// Create workflow service.
+	workflowSvc, err := setUpWorkflowService(log, dbSvc, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create CLI service: %v", err)
+		return nil, fmt.Errorf("failed to create workflow service: %v", err)
 	}
 	// Create management service.
 	managementSvc, err := setUpManagementService(log, dbSvc, cfg)
@@ -35,22 +34,11 @@ func SetUpServices(log common.Logger, cfg Configuration) (*services, error) {
 		return nil, fmt.Errorf("failed to create management service: %v", err)
 	}
 
-	return &services{
-		CLI:        cliSvc,
+	return &Services{
+		Workflow:   workflowSvc,
 		Management: managementSvc,
 	}, nil
 
-}
-
-// setUpCLIService creates and configures a CLI service.
-func setUpCLIService(log common.Logger, dbSvc db.Service, cfg Configuration) (cli.Service, error) {
-	// Setup workflow service.
-	workflowSvc, err := setUpWorkflowService(log, dbSvc, cfg)
-	if err != nil {
-		return nil, err
-	}
-	// Create CLI service.
-	return cli.NewService(workflowSvc, cli.WithLogger(log))
 }
 
 // setUpManagementService creates and configures a management service.
@@ -73,11 +61,7 @@ func setUpWorkflowService(log common.Logger, dbSvc db.Service, cfg Configuration
 	}
 
 	// Create workflow service.
-	workflowCompany := workflow.Company{
-		Name:        cfg.Services.Company.Name,
-		Departments: cfg.Services.Company.Departments,
-	}
-	workflowSvc, err := workflow.NewService(workflowCompany, dbSvc, slackSvc, emailSvc, workflow.WithLogger(log))
+	workflowSvc, err := workflow.NewService(cfg.Services.Company.Name, cfg.Services.Company.Departments, dbSvc, slackSvc, emailSvc, workflow.WithLogger(log))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workflow service: %v", err)
 	}

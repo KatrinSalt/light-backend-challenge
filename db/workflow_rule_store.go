@@ -139,7 +139,7 @@ func (s *workflowRuleStore) Update(workflowRule WorkflowRule) error {
 		    is_manager_approval_required = $6, approver_id = $7, approval_channel = $8 
 		WHERE id = $1`, s.table)
 
-	result, err := tx.Exec(updateQuery,
+	_, err = tx.Exec(updateQuery,
 		workflowRule.ID,
 		workflowRule.CompanyID,
 		workflowRule.MinAmount,
@@ -151,15 +151,6 @@ func (s *workflowRuleStore) Update(workflowRule WorkflowRule) error {
 
 	if err != nil {
 		return fmt.Errorf("failed to update workflow rule: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return ErrWorkflowRuleNotFound
 	}
 
 	if err := tx.Commit(); err != nil {

@@ -9,11 +9,12 @@ var (
 
 // Approver represents a person who can approve invoices.
 type Approver struct {
-	ID      int    `json:"id,omitempty"`
-	Name    string `json:"name"`
-	Role    string `json:"role"`
-	Email   string `json:"email"`
-	SlackID string `json:"slack_id"`
+	ID        int    `json:"id,omitempty"`
+	CompanyID int    `json:"company_id,omitempty"`
+	Name      string `json:"name"`
+	Role      string `json:"role"`
+	Email     string `json:"email"`
+	SlackID   string `json:"slack_id"`
 }
 
 func (a *Approver) Validate() error {

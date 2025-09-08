@@ -25,10 +25,10 @@ const (
 
 // Configuration contains the configuration for the application.
 type Configuration struct {
-	Services Services
+	Services ServicesConfig
 }
 
-type Services struct {
+type ServicesConfig struct {
 	Company  Company
 	Database Database
 	Slack    Slack
@@ -69,7 +69,7 @@ func New(options ...Option) (Configuration, error) {
 	}
 
 	cfg := Configuration{
-		Services: Services{
+		Services: ServicesConfig{
 			Company: Company{
 				Name:        defaultCompanyName,
 				Departments: defaultCompanyDepartments,
